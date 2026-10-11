@@ -36,12 +36,109 @@ addEventListener('hashchange', route);
 addEventListener('DOMContentLoaded', route);
 
 /* ---------- Home ---------- */
+
 function homePage() {
-  app.innerHTML = `<section class="wrap hero">
-    <h1>Make your portfolio online</h1>
-    <p>Enter your information, choose one of three templates, and view your portfolio. Everything is saved online so you can edit it later.</p>
-    <a class="btn big" href="#/form">Create Portfolio</a>
-  </section>`;
+  app.innerHTML = `
+    <section class="home-hero">
+      <div class="hero-grid"></div>
+
+      <div class="hero-content">
+        <span class="eyebrow">✦ YOUR STORY, YOUR STYLE</span>
+
+        <h1>
+          Your journey deserves
+          <span>to stand out.</span>
+        </h1>
+
+        <p class="hero-copy">
+          Bring your skills, projects, and experience together
+          in a personal portfolio that's uniquely you.
+        </p>
+
+        <div class="hero-actions">
+          <a class="btn big" href="#/form">
+            Create my portfolio ↗
+          </a>
+
+          <a class="btn ghost big" href="#/manage">
+            Manage portfolios
+          </a>
+        </div>
+
+        <div class="hero-note">
+          <span>✦</span> Three unique styles
+          <span>·</span> Saved online
+          <span>·</span> Made for you
+        </div>
+      </div>
+
+      <div class="hero-showcase">
+        <div class="showcase-top">
+          <span>✦ PORTFOLIO PREVIEW</span>
+          <span class="preview-status">● LIVE CONCEPT</span>
+        </div>
+
+        <div class="showcase-body">
+          <div class="mock-profile">
+            <div class="mock-avatar">Y</div>
+            <div>
+              <strong>Your Name</strong>
+              <p>Creator · Thinker · Builder</p>
+            </div>
+          </div>
+
+          <div class="mock-intro">
+            <span>HELLO, WORLD.</span>
+            <h2>Make your<br>next move matter.</h2>
+            <p>Your story. Your skills. Your future.</p>
+          </div>
+
+          <div class="mock-projects">
+            <div class="mock-project">
+              <span>✳</span>
+              <strong>My Projects</strong>
+              <small>Ideas brought to life</small>
+            </div>
+
+            <div class="mock-project">
+              <span>⌘</span>
+              <strong>My Skills</strong>
+              <small>What makes me unique</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="home-templates">
+      <span class="eyebrow">FIND YOUR LOOK</span>
+      <h2>Three styles. <span>One you.</span></h2>
+      <p>Choose a design that fits the story you want to tell.</p>
+
+      <div class="style-cards">
+        <a class="style-card" href="#/form">
+          <span class="style-icon">01</span>
+          <h3>Simple</h3>
+          <p>Clean, timeless, and focused on your work.</p>
+          <span class="card-link">Explore your style ↗</span>
+        </a>
+
+        <a class="style-card" href="#/form">
+          <span class="style-icon">02</span>
+          <h3>Modern</h3>
+          <p>Polished, bold, and ready to make an impression.</p>
+          <span class="card-link">Explore your style ↗</span>
+        </a>
+
+        <a class="style-card" href="#/form">
+          <span class="style-icon">03</span>
+          <h3>Creative</h3>
+          <p>Expressive, distinctive, and full of personality.</p>
+          <span class="card-link">Explore your style ↗</span>
+        </a>
+      </div>
+    </section>
+  `;
 }
 
 /* ---------- Form ---------- */
