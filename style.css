@@ -1135,7 +1135,7 @@ body {
 
 /* =========================================
    PORTFOLIO GENERATOR — COMPLETE TEMPLATE
-   REDESIGN: SIMPLE / MODERN / CREATIVE
+   DESIGN: SIMPLE / MODERN / CREATIVE
    ========================================= */
 
 /* Shared portfolio foundation */
@@ -1766,7 +1766,7 @@ body {
   }
 }
 
-/* Preview toolbar: improve button contrast */
+/* Preview toolbar: button contrast */
 .bar .actions a.btn {
   background: #e2d3e7;
   color: #9b53a5;
@@ -1786,4 +1786,18 @@ body {
 .bar .actions a.btn:focus-visible {
   outline: 3px solid #fbbf24;
   outline-offset: 3px;
+}
+
+/* Improve template name visibility in preview toolbar */
+.bar {
+  color: #912cc0;
+}
+
+.bar > :first-child {
+  color: #912cc0;
+  font-weight: 700;
+}
+
+.bar > :first-child * {
+  color: #912cc0;
 }
