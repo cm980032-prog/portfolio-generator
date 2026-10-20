@@ -1,5 +1,6 @@
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const app = document.getElementById('app');
+const standaloneLogin = /(?:^|\/)login\.html$/.test(window.location.pathname);
 let session = null;
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const lines = s => (s || '').split('\n').map(x => x.trim()).filter(Boolean);
@@ -31,24 +32,60 @@ const getTemplate = async id => { const { data, error } = await db.from('templat
 /* ---------- Navigation (changes when logged in) ---------- */
 function renderNav() {
   const nav = document.querySelector('.nav nav');
-  nav.innerHTML = session
-    ? `<a href="#/">Home</a><a href="#/form">Create</a><a href="#/manage">Manage</a><span class="who">${esc(session.user.email)}</span><button class="btn ghost sm" id="logout">Log out</button>`
-    : `<a href="#/">Home</a><a href="#/login">Log in</a><a href="#/signup">Sign up</a>`;
+  if (!nav) return;
+  nav.innerHTML = standaloneLogin
+    ? (session
+      ? `<a href="index.html">Home</a><a href="index.html#/manage">Manage</a><span class="who">${esc(session.user.email)}</span><button class="btn ghost sm" id="logout">Log out</button>`
+      : `<a href="index.html">Home</a>`)
+    : (session
+      ? `<a href="#/">Home</a><a href="#/form">Create</a><a href="#/manage">Manage</a><span class="who">${esc(session.user.email)}</span><button class="btn ghost sm" id="logout">Log out</button>`
+      : `<a href="#/">Home</a><a href="login.html" target="_blank" rel="noopener">Log in</a><a href="#/signup">Sign up</a>`);
   const out = document.getElementById('logout');
   if (out) out.onclick = async () => {
-    await db.auth.signOut();
-    if (location.hash === '#/' || location.hash === '') route(); else location.hash = '#/';
+    out.disabled = true;
+    try {
+      const { error } = await db.auth.signOut();
+      if (error) throw error;
+      session = null;
+      renderNav();
+      toast('You have been logged out.');
+      if (standaloneLogin) location.href = 'index.html';
+      else {
+        if (!location.hash || location.hash === '#/') await route();
+        else location.hash = '#/';
+      }
+    } catch (error) {
+      out.disabled = false;
+      fail(error);
+    }
   };
 }
 
+// Keep the shared navigation in sync with Supabase session changes (including
+// sign-out from another tab). The explicit logout handler still checks errors.
+db.auth.onAuthStateChange((event, nextSession) => {
+  session = nextSession;
+  renderNav();
+});
+
 /* ---------- Router ---------- */
 async function route() {
-  const { data } = await db.auth.getSession();
+  const { data, error: sessionError } = await db.auth.getSession();
+  if (sessionError) {
+    console.error('Unable to read Supabase session:', sessionError);
+    fail(sessionError);
+    return;
+  }
   session = data.session;
   renderNav();
   const [, page = '', id] = location.hash.split('/');
   window.scrollTo(0, 0);
   app.onclick = null;
+  if (standaloneLogin) {
+    if (session) { app.innerHTML = '<section class="wrap auth auth-page"><h1>You are already logged in.</h1><p><a class="btn" href="index.html#/manage">Manage portfolios</a></p></section>'; return; }
+    authPage('login');
+    return;
+  }
   if (!session && !['', 'login', 'signup'].includes(page)) { location.hash = '#/login'; return; }
   if (session && (page === 'login' || page === 'signup')) { location.hash = '#/manage'; return; }
   try {
@@ -59,7 +96,11 @@ async function route() {
     else if (page === 'manage') await managePage();
     else homePage();
   } catch (e) {
-    app.innerHTML = `<section class="wrap"><h1>Something went wrong</h1><p>${esc(e.message)}</p><a class="btn" href="#/">Back to home</a></section>`;
+    console.error('PortNova route/database request failed:', e);
+    const networkHint = e instanceof TypeError && /fetch/i.test(e.message)
+      ? '<p class="error-help">The browser could not reach Supabase. Check your internet connection, the project URL and publishable key in index.html, and whether the Supabase project is active. If those are correct, inspect the browser Network tab for the failed request.</p>'
+      : '';
+    app.innerHTML = `<section class="wrap"><h1>Something went wrong</h1><p>${esc(e.message || 'Request failed')}</p>${networkHint}<a class="btn" href="#/">Back to home</a></section>`;
   }
 }
 addEventListener('hashchange', route);
@@ -67,26 +108,55 @@ addEventListener('DOMContentLoaded', route);
 
 /* ---------- Home ---------- */
 function homePage() {
-  app.innerHTML = `<section class="wrap hero">
-    <h1>Make your portfolio online</h1>
-    <p>Enter your information, choose one of three templates, and view your portfolio. Everything is saved online, and each portfolio is private to your account.</p>
-    ${session
-      ? '<a class="btn big" href="#/form">Create Portfolio</a>'
-      : '<div class="actions"><a class="btn big" href="#/signup">Create Portfolio</a><a class="btn ghost big" href="#/login">Log in</a></div>'}
-  </section>`;
+  app.innerHTML = `
+    <section class="home-hero">
+      <div class="hero-grid" aria-hidden="true"></div>
+      <div class="hero-content">
+        <span class="eyebrow">YOUR WORK. YOUR STORY. YOUR SPACE.</span>
+        <h1>Make your work <span>impossible to ignore.</span></h1>
+        <p class="hero-copy">Build a polished online portfolio in minutes. Add your experience, choose a style that feels like you, and keep everything organized in one place.</p>
+        <div class="hero-actions">
+          ${session
+            ? '<a class="btn big" href="#/form">Create Portfolio</a>'
+            : '<a class="btn big" href="#/signup">Create Portfolio</a><a class="btn ghost big" href="login.html" target="_blank" rel="noopener">Log in</a>'}
+        </div>
+        <p class="hero-note">SIMPLE SETUP · THREE DISTINCT DESIGNS · YOUR PORTFOLIO, YOUR WAY</p>
+      </div>
+      <aside class="hero-showcase" aria-label="Example portfolio preview">
+        <div class="showcase-top"><span>PORTNOVA / LIVE PREVIEW</span><span class="preview-status">● READY TO CREATE</span></div>
+        <div class="showcase-body">
+          <div class="mock-profile"><div class="mock-avatar">PN</div><div><strong>Your Name</strong><p>Designer · Developer · Creator</p></div></div>
+          <div class="mock-intro"><span>HELLO, WORLD</span><h2>Your next chapter starts here.</h2><p>A home for your best work, ideas, and achievements.</p></div>
+          <div class="mock-projects">
+            <div class="mock-project"><span>01</span><strong>Selected Work</strong><small>Projects that tell your story</small></div>
+            <div class="mock-project"><span>02</span><strong>Your Journey</strong><small>Skills, learning, and growth</small></div>
+          </div>
+        </div>
+      </aside>
+    </section>
+    <section class="home-templates">
+      <span class="eyebrow">FIND YOUR STYLE</span>
+      <h2>Three templates. <span>One you.</span></h2>
+      <p>Start with a layout that fits the way you want to present your work.</p>
+      <div class="style-cards">
+        <article class="style-card"><div class="style-icon">01</div><h3>Simple</h3><p>Clean, focused, and professional. Let your experience speak for itself.</p><span class="card-link">Minimal and clear ↗</span></article>
+        <article class="style-card"><div class="style-icon">02</div><h3>Modern</h3><p>A structured, contemporary layout for projects, skills, and achievements.</p><span class="card-link">Sharp and polished ↗</span></article>
+        <article class="style-card"><div class="style-icon">03</div><h3>Creative</h3><p>A bold layout with personality for a portfolio that stands out.</p><span class="card-link">Express yourself ↗</span></article>
+      </div>
+    </section>`;
 }
 
 /* ---------- Log in / Sign up ---------- */
 function authPage(mode) {
   const login = mode === 'login';
-  app.innerHTML = `<section class="wrap auth"><h1>${login ? 'Log in' : 'Create your account'}</h1>
+  app.innerHTML = `<section class="wrap auth auth-page"><a class="auth-home-link" href="${standaloneLogin ? 'index.html' : '#/'}">← Back to PortNova home</a><div class="auth-brand">PORT<span>NOVA</span></div><h1>${login ? 'Welcome back.' : 'Create your account'}</h1>
   <p class="sub">${login ? 'Log in to see your portfolios.' : 'Sign up so only you can see and edit your portfolios.'}</p>
   <form id="af">
     <label>Email<input type="email" name="email" required autocomplete="email"></label>
     <label>Password${login ? '' : '<small>At least 6 characters</small>'}<input type="password" name="password" required minlength="6" autocomplete="${login ? 'current-password' : 'new-password'}"></label>
     <button class="btn big" type="submit">${login ? 'Log in' : 'Sign up'}</button>
   </form>
-  <p>${login ? 'No account yet? <a href="#/signup">Sign up</a>' : 'Already have an account? <a href="#/login">Log in</a>'}</p></section>`;
+  <p>${login ? 'No account yet? <a href="index.html#/signup">Sign up</a>' : 'Already have an account? <a href="login.html" target="_blank" rel="noopener">Log in</a>'}</p></section>`;
   document.getElementById('af').onsubmit = async e => {
     e.preventDefault();
     const { email, password } = Object.fromEntries(new FormData(e.target));
@@ -94,11 +164,13 @@ function authPage(mode) {
       if (login) {
         const { error } = await db.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        toast('Welcome back'); location.hash = '#/manage';
+        toast('Welcome back');
+        if (standaloneLogin) location.href = 'index.html#/manage';
+        else location.hash = '#/manage';
       } else {
         const { data, error } = await db.auth.signUp({ email, password });
         if (error) throw error;
-        if (data.session) { toast('Account created'); location.hash = '#/manage'; }
+        if (data.session) { toast('Account created'); if (standaloneLogin) location.href = 'index.html#/manage'; else location.hash = '#/manage'; }
         else toast('Check your email to confirm your account, then log in.');
       }
     } catch (err) { fail(err); }
