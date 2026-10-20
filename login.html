@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Log in — PortNova</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="nav">
+    <a class="brand" href="index.html">Port<span>Nova</span></a>
+    <nav><a href="index.html">Home</a></nav>
+  </header>
+  <main id="app" class="login-document"></main>
+  <div id="toast"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+  <script>
+    // Supabase project URL and PUBLISHABLE key only. Never put a secret or service_role key here.
+    window.SUPABASE_URL = "https://llvmqcqhlheagcjplnoo.supabase.co";
+    window.SUPABASE_KEY = "sb_publishable_iUFOnEmUIflvEBEtxh_bmA_O6WT5liB";
+  </script>
+  <script src="app.js"></script>
+</body>
+</html>
