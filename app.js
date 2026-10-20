@@ -11,7 +11,17 @@ function toast(msg, bad) {
   t.textContent = msg; t.className = 'show' + (bad ? ' bad' : '');
   setTimeout(() => t.className = '', 4000);
 }
-const fail = e => { console.error(e); toast(e.message || 'Something went wrong.', true); };
+
+const FRIENDLY = {
+  email_format: 'Proper email format is required (example: name@gmail.com).',
+  phone_format: 'Proper contact number is required (at least 11 digits, example: 09225812345).',
+  name_no_numbers: 'Full name cannot contain numbers.'
+};
+const fail = e => {
+  console.error(e);
+  const msg = e.message || '', key = Object.keys(FRIENDLY).find(k => msg.includes(k));
+  toast(key ? FRIENDLY[key] : (msg || 'Something went wrong.'), true);
+};
 
 /* ---------- Database ---------- */
 const getTemplates = async () => { const { data, error } = await db.from('templates').select('*').order('id'); if (error) throw error; return data; };
