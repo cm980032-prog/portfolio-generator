@@ -1,5 +1,6 @@
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const app = document.getElementById('app');
+let session = null;
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const lines = s => (s || '').split('\n').map(x => x.trim()).filter(Boolean);
 const parts = l => l.split('|').map(x => x.trim());
@@ -8,7 +9,7 @@ const url = u => /^https?:\/\//i.test(u) ? esc(u) : '#';
 function toast(msg, bad) {
   const t = document.getElementById('toast');
   t.textContent = msg; t.className = 'show' + (bad ? ' bad' : '');
-  setTimeout(() => t.className = '', 3000);
+  setTimeout(() => t.className = '', 4000);
 }
 const fail = e => { console.error(e); toast(e.message || 'Something went wrong.', true); };
 
@@ -17,13 +18,32 @@ const getTemplates = async () => { const { data, error } = await db.from('templa
 const getPortfolio = async id => { const { data, error } = await db.from('portfolios').select('*').eq('id', id).single(); if (error) throw error; return data; };
 const getTemplate = async id => { const { data, error } = await db.from('templates').select('*').eq('id', id).single(); if (error) throw error; return data; };
 
+/* ---------- Navigation (changes when logged in) ---------- */
+function renderNav() {
+  const nav = document.querySelector('.nav nav');
+  nav.innerHTML = session
+    ? `<a href="#/">Home</a><a href="#/form">Create</a><a href="#/manage">Manage</a><span class="who">${esc(session.user.email)}</span><button class="btn ghost sm" id="logout">Log out</button>`
+    : `<a href="#/">Home</a><a href="#/login">Log in</a><a href="#/signup">Sign up</a>`;
+  const out = document.getElementById('logout');
+  if (out) out.onclick = async () => {
+    await db.auth.signOut();
+    if (location.hash === '#/' || location.hash === '') route(); else location.hash = '#/';
+  };
+}
+
 /* ---------- Router ---------- */
 async function route() {
+  const { data } = await db.auth.getSession();
+  session = data.session;
+  renderNav();
   const [, page = '', id] = location.hash.split('/');
   window.scrollTo(0, 0);
   app.onclick = null;
+  if (!session && !['', 'login', 'signup'].includes(page)) { location.hash = '#/login'; return; }
+  if (session && (page === 'login' || page === 'signup')) { location.hash = '#/manage'; return; }
   try {
-    if (page === 'form') await formPage(id);
+    if (page === 'login' || page === 'signup') authPage(page);
+    else if (page === 'form') await formPage(id);
     else if (page === 'templates') await templatesPage(id);
     else if (page === 'preview') await previewPage(id);
     else if (page === 'manage') await managePage();
@@ -36,122 +56,56 @@ addEventListener('hashchange', route);
 addEventListener('DOMContentLoaded', route);
 
 /* ---------- Home ---------- */
-
 function homePage() {
-  app.innerHTML = `
-    <section class="home-hero">
-      <div class="hero-grid"></div>
+  app.innerHTML = `<section class="wrap hero">
+    <h1>Make your portfolio online</h1>
+    <p>Enter your information, choose one of three templates, and view your portfolio. Everything is saved online, and each portfolio is private to your account.</p>
+    ${session
+      ? '<a class="btn big" href="#/form">Create Portfolio</a>'
+      : '<div class="actions"><a class="btn big" href="#/signup">Create Portfolio</a><a class="btn ghost big" href="#/login">Log in</a></div>'}
+  </section>`;
+}
 
-      <div class="hero-content">
-        <span class="eyebrow">✦ YOUR STORY, YOUR STYLE</span>
-
-        <h1>
-          Your journey deserves
-          <span>to stand out.</span>
-        </h1>
-
-        <p class="hero-copy">
-          Bring your skills, projects, and experience together
-          in a personal portfolio that's uniquely you.
-        </p>
-
-        <div class="hero-actions">
-          <a class="btn big" href="#/form">
-            Create my portfolio ↗
-          </a>
-
-          <a class="btn ghost big" href="#/manage">
-            Manage portfolios
-          </a>
-        </div>
-
-        <div class="hero-note">
-          <span>✦</span> Three unique styles
-          <span>·</span> Saved online
-          <span>·</span> Made for you
-        </div>
-      </div>
-
-      <div class="hero-showcase">
-        <div class="showcase-top">
-          <span>✦ PORTFOLIO PREVIEW</span>
-          <span class="preview-status">● LIVE CONCEPT</span>
-        </div>
-
-        <div class="showcase-body">
-          <div class="mock-profile">
-            <div class="mock-avatar">Y</div>
-            <div>
-              <strong>Your Name</strong>
-              <p>Creator · Thinker · Builder</p>
-            </div>
-          </div>
-
-          <div class="mock-intro">
-            <span>HELLO, WORLD.</span>
-            <h2>Make your<br>next move matter.</h2>
-            <p>Your story. Your skills. Your future.</p>
-          </div>
-
-          <div class="mock-projects">
-            <div class="mock-project">
-              <span>✳</span>
-              <strong>My Projects</strong>
-              <small>Ideas brought to life</small>
-            </div>
-
-            <div class="mock-project">
-              <span>⌘</span>
-              <strong>My Skills</strong>
-              <small>What makes me unique</small>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="home-templates">
-      <span class="eyebrow">FIND YOUR LOOK</span>
-      <h2>Three styles. <span>One you.</span></h2>
-      <p>Choose a design that fits the story you want to tell.</p>
-
-      <div class="style-cards">
-        <a class="style-card" href="#/form">
-          <span class="style-icon">01</span>
-          <h3>Simple</h3>
-          <p>Clean, timeless, and focused on your work.</p>
-          <span class="card-link">Explore your style ↗</span>
-        </a>
-
-        <a class="style-card" href="#/form">
-          <span class="style-icon">02</span>
-          <h3>Modern</h3>
-          <p>Polished, bold, and ready to make an impression.</p>
-          <span class="card-link">Explore your style ↗</span>
-        </a>
-
-        <a class="style-card" href="#/form">
-          <span class="style-icon">03</span>
-          <h3>Creative</h3>
-          <p>Expressive, distinctive, and full of personality.</p>
-          <span class="card-link">Explore your style ↗</span>
-        </a>
-      </div>
-    </section>
-  `;
+/* ---------- Log in / Sign up ---------- */
+function authPage(mode) {
+  const login = mode === 'login';
+  app.innerHTML = `<section class="wrap auth"><h1>${login ? 'Log in' : 'Create your account'}</h1>
+  <p class="sub">${login ? 'Log in to see your portfolios.' : 'Sign up so only you can see and edit your portfolios.'}</p>
+  <form id="af">
+    <label>Email<input type="email" name="email" required autocomplete="email"></label>
+    <label>Password${login ? '' : '<small>At least 6 characters</small>'}<input type="password" name="password" required minlength="6" autocomplete="${login ? 'current-password' : 'new-password'}"></label>
+    <button class="btn big" type="submit">${login ? 'Log in' : 'Sign up'}</button>
+  </form>
+  <p>${login ? 'No account yet? <a href="#/signup">Sign up</a>' : 'Already have an account? <a href="#/login">Log in</a>'}</p></section>`;
+  document.getElementById('af').onsubmit = async e => {
+    e.preventDefault();
+    const { email, password } = Object.fromEntries(new FormData(e.target));
+    try {
+      if (login) {
+        const { error } = await db.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        toast('Welcome back'); location.hash = '#/manage';
+      } else {
+        const { data, error } = await db.auth.signUp({ email, password });
+        if (error) throw error;
+        if (data.session) { toast('Account created'); location.hash = '#/manage'; }
+        else toast('Check your email to confirm your account, then log in.');
+      }
+    } catch (err) { fail(err); }
+  };
 }
 
 /* ---------- Form ---------- */
 async function formPage(id) {
   const p = id ? await getPortfolio(id) : {};
   const f = (name, label, type = 'input', hint = '') => `<label>${label}${hint ? `<small>${hint}</small>` : ''}` +
-    (type === 'textarea' ? `<textarea name="${name}" rows="4">${esc(p[name])}</textarea>` : `<input name="${name}" value="${esc(p[name])}" ${name === 'full_name' ? 'required' : ''}>`) + `</label>`;
+    (type === 'textarea' ? `<textarea name="${name}" rows="4">${esc(p[name])}</textarea>` : `<input name="${name}" value="${esc(p[name])}" ${name === 'full_name' ? 'required pattern="[^0-9]+" title="Letters only, no numbers" maxlength="80"' : ''}>`) + `</label>`;
   app.innerHTML = `<section class="wrap narrow"><h1>${id ? 'Edit' : 'Create'} portfolio</h1>
   <form id="f">
     <h2>Personal information</h2>
     <div class="photo"><img id="pimg" alt="" src="${esc(p.photo || '')}" ${p.photo ? '' : 'hidden'}>
       <label class="btn ghost">Choose profile picture<input type="file" id="pfile" accept="image/*" hidden></label></div>
-    ${f('full_name', 'Full name *')}${f('email', 'Email')}${f('phone', 'Contact number')}${f('address', 'Address')}
+    ${f('full_name', 'Full name *', 'input', 'Letters only, no numbers')}${f('email', 'Email')}${f('phone', 'Contact number')}${f('address', 'Address')}
     ${f('about', 'About me', 'textarea')}
     <h2>Education</h2>${f('education', 'Educational background', 'textarea', 'One per line: Degree | School | Years')}
     <h2>Skills</h2>${f('skills', 'Skills', 'input', 'Separate with commas')}
@@ -162,6 +116,8 @@ async function formPage(id) {
   </form></section>`;
 
   let photo = p.photo || null;
+  const nameBox = document.querySelector('[name="full_name"]');
+  nameBox.oninput = () => { nameBox.value = nameBox.value.replace(/[0-9]/g, ''); };
   document.getElementById('pfile').onchange = e => resizeImage(e.target.files[0]).then(d => {
     photo = d; const i = document.getElementById('pimg'); i.src = d; i.hidden = false;
   }).catch(fail);
@@ -169,6 +125,9 @@ async function formPage(id) {
   document.getElementById('f').onsubmit = async e => {
     e.preventDefault();
     const rec = Object.fromEntries(new FormData(e.target)); rec.photo = photo;
+    rec.full_name = rec.full_name.trim().replace(/\s+/g, ' ');
+    if (!rec.full_name) return toast('Please enter your full name.', true);
+    if (/[0-9]/.test(rec.full_name)) return toast('Full name cannot contain numbers.', true);
     try {
       const q = id ? db.from('portfolios').update(rec).eq('id', id) : db.from('portfolios').insert(rec);
       const { data, error } = await q.select().single();

@@ -3,25 +3,23 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>PortNova - Portfolio Generator</title>
+  <title>Portfolio Generator</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <header class="nav">
-    <a class="brand" href="#/">PortNova</a>
-    <nav><a href="#/">Home</a><a href="#/form">Create</a><a href="#/manage">Manage</a></nav>
+    <a class="brand" href="#/">Portfolio Generator</a>
+    <nav><a href="#/">Home</a><a href="#/login">Log in</a><a href="#/signup">Sign up</a></nav>
   </header>
   <main id="app"></main>
   <div id="toast"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
   <script>
-    // PASTE YOUR SUPABASE VALUES HERE (Project Settings > API). Use the anon/public key only.
+    // Supabase project URL and PUBLISHABLE key only. Never put a secret or service_role key here.
     window.SUPABASE_URL = "https://llvmqcqhlheagcjplnoo.supabase.co";
     window.SUPABASE_KEY = "sb_publishable_iUFOnEmUIflvEBEtxh_bmA_O6WT5liB";
   </script>
   <script src="app.js"></script>
 </body>
 </html>
-
-
